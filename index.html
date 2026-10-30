@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ru" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlow 2.0 — Управление задачами</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                }
+            }
+        }
+    </script>
+    <!-- Иконки FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Шрифт Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Эффект матового стекла */
+        .glass-card {
+            backdrop-filter: blur(12px);
+        }
+        /* Анимация появления элементов */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.25s ease-out forwards;
+        }
+        /* Анимация модального окна */
+        @keyframes modalShow {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-modal {
+            animation: modalShow 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-300 antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- Верхняя шапка (Header) -->
+    <header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xs transition-colors duration-300">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+                <i class="fa-solid fa-bolt-lightning text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg tracking-tight bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">TaskFlow</h1>
+                <p class="text-xs text-slate-400 font-medium hidden sm:block">Твой персональный трекер задач</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+            <!-- Кнопка переключения темы -->
+            <button onclick="toggleTheme()" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-amber-400 transition-all flex items-center justify-center">
+                <i id="theme-icon" class="fa-solid fa-moon text-base"></i>
+            </button>
+            <!-- Кнопка добавления задачи -->
+            <button onclick="openModal()" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-md shadow-indigo-600/25 transition-all flex items-center space-x-2">
+                <i class="fa-solid fa-plus text-xs"></i>
+                <span class="hidden sm:inline">Новая задача</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Основной контент -->
+    <main class="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col gap-6">
+
+        <!-- Прогресс выполнения -->
+        <section class="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs transition-colors duration-300">
+            <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Прогресс выполнения</span>
+                <span id="progress-percent" class="text-xs font-bold text-indigo-600 dark:text-indigo-400">0%</span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div id="progress-bar" class="h-full bg-gradient-to-r from-indigo-500 to-emerald-400 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+            </div>
+        </section>
+
+        <!-- Статистика -->
+        <section class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center space-x-3.5 transition-colors duration-300">
+                <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-base">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+                <div>
+                    <div class="text-xs text-slate-400 font-medium">Всего</div>
+                    <div id="stat-total" class="text-xl font-bold text-slate-800 dark:text-slate-100">0</div>
+                </div>
+            </div>
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center space-x-3.5 transition-colors duration-300">
+                <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center text-base">
+                    <i class="fa-solid fa-clock"></i>
+                </div>
+                <div>
+                    <div class="text-xs text-slate-400 font-medium">В работе</div>
+                    <div id="stat-active" class="text-xl font-bold text-slate-800 dark:text-slate-100">0</div>
+                </div>
+            </div>
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center space-x-3.5 transition-colors duration-300">
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-base">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div>
+                    <div class="text-xs text-slate-400 font-medium">Готово</div>
+                    <div id="stat-completed" class="text-xl font-bold text-slate-800 dark:text-slate-100">0</div>
+                </div>
+            </div>
+            <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center space-x-3.5 transition-colors duration-300">
+                <div class="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center text-base">
+                    <i class="fa-solid fa-fire"></i>
+                </div>
+                <div>
+                    <div class="text-xs text-slate-400 font-medium">Важные</div>
+                    <div id="stat-high" class="text-xl font-bold text-slate-800 dark:text-slate-100">0</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Поиск и Фильтры -->
+        <section class="flex flex-col sm:flex-row gap-3 items-center justify-between">
+            <div class="relative w-full sm:w-80">
+                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                </span>
+                <input type="text" id="search-input" oninput="renderTasks()" placeholder="Поиск задач..." class="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs text-slate-800 dark:text-slate-100">
+            </div>
+            <div class="flex items-center space-x-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+                <button onclick="setFilter('all')" id="filter-all" class="filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white transition-all whitespace-nowrap shadow-xs">Все</button>
+                <button onclick="setFilter('active')" id="filter-active" class="filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all whitespace-nowrap shadow-2xs">Активные</button>
+                <button onclick="setFilter('completed')" id="filter-completed" class="filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all whitespace-nowrap shadow-2xs">Завершенные</button>
+            </div>
+        </section>
+
+        <!-- Список задач -->
+        <section class="flex flex-col gap-3" id="task-list">
+            <!-- Динамически заполняется JavaScript -->
+        </section>
+
+    </main>
+
+    <!-- Подвал (Footer) -->
+    <footer class="mt-auto py-6 text-center text-xs text-slate-400 border-t border-slate-200/60 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40">
+        <p>Создано с помощью Vibe Coding • <span class="text-indigo-600 dark:text-indigo-400 font-medium">TaskFlow v2.0</span></p>
+    </footer>
+
+    <!-- Модальное окно добавления задачи -->
+    <div id="task-modal" class="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-md w-full p-6 shadow-2xl animate-modal border border-slate-200 dark:border-slate-800">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="font-bold text-lg text-slate-900 dark:text-slate-100">Новая задача</h3>
+                <button onclick="closeModal()" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+            <form id="task-form" onsubmit="handleAddTask(event)" class="flex flex-col gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Название задачи</label>
+                    <input type="text" id="task-title" required placeholder="Например, изучить Vibe Coding..." class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-100">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Категория</label>
+                        <select id="task-category" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-100">
+                            <option value="Работа">💼 Работа</option>
+                            <option value="Учеба">📚 Учеба</option>
+                            <option value="Личное">🏠 Личное</option>
+                            <option value="Здоровье">⚡ Здоровье</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Приоритет</label>
+                        <select id="task-priority" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800 dark:text-slate-100">
+                            <option value="normal">Обычный</option>
+                            <option value="high">Высокий 🔥</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex items-center justify-end space-x-2.5 mt-3">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Отмена</button>
+                    <button type="submit" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/20 transition-all">Создать задачу</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript Логика -->
+    <script>
+        // Инициализация задач из localStorage
+        let tasks = JSON.parse(localStorage.getItem('taskflow_tasks')) || [
+            { id: 1, title: 'Изучить основы Vibe Coding', category: 'Учеба', priority: 'high', completed: false },
+            { id: 2, title: 'Создать первый сайт на Tailwind', category: 'Работа', priority: 'normal', completed: true },
+            { id: 3, title: 'Сделать утреннюю зарядку', category: 'Здоровье', priority: 'normal', completed: false }
+        ];
+
+        let currentFilter = 'all';
+
+        // Переключение темы (Dark/Light)
+        function initTheme() {
+            const savedTheme = localStorage.getItem('taskflow_theme') || 'light';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.getElementById('theme-icon').className = 'fa-solid fa-sun text-base';
+            }
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                icon.className = 'fa-solid fa-moon text-base';
+                localStorage.setItem('taskflow_theme', 'light');
+            } else {
+                html.classList.add('dark');
+                icon.className = 'fa-solid fa-sun text-base';
+                localStorage.setItem('taskflow_theme', 'dark');
+            }
+        }
+
+        function saveTasks() {
+            localStorage.setItem('taskflow_tasks', JSON.stringify(tasks));
+            updateStats();
+        }
+
+        function openModal() {
+            const modal = document.getElementById('task-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.getElementById('task-title').focus();
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('task-modal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+            document.getElementById('task-form').reset();
+        }
+
+        function handleAddTask(e) {
+            e.preventDefault();
+            const title = document.getElementById('task-title').value;
+            const category = document.getElementById('task-category').value;
+            const priority = document.getElementById('task-priority').value;
+
+            const newTask = {
+                id: Date.now(),
+                title,
+                category,
+                priority,
+                completed: false
+            };
+
+            tasks.unshift(newTask);
+            saveTasks();
+            renderTasks();
+            closeModal();
+        }
+
+        function toggleTask(id) {
+            tasks = tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
+            saveTasks();
+            renderTasks();
+        }
+
+        function deleteTask(id) {
+            tasks = tasks.filter(t => t.id !== id);
+            saveTasks();
+            renderTasks();
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.className = "filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all whitespace-nowrap shadow-2xs";
+            });
+            const activeBtn = document.getElementById(`filter-${filter}`);
+            activeBtn.className = "filter-btn px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 text-white transition-all whitespace-nowrap shadow-xs";
+            renderTasks();
+        }
+
+        function updateStats() {
+            const total = tasks.length;
+            const completed = tasks.filter(t => t.completed).length;
+            const active = total - completed;
+            const high = tasks.filter(t => t.priority === 'high' && !t.completed).length;
+
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-active').innerText = active;
+            document.getElementById('stat-completed').innerText = completed;
+            document.getElementById('stat-high').innerText = high;
+
+            // Расчет прогресса
+            const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+            document.getElementById('progress-percent').innerText = `${percent}%`;
+            document.getElementById('progress-bar').style.width = `${percent}%`;
+        }
+
+        function renderTasks() {
+            const listEl = document.getElementById('task-list');
+            const searchQuery = document.getElementById('search-input').value.toLowerCase();
+
+            let filtered = tasks.filter(task => {
+                const matchesSearch = task.title.toLowerCase().includes(searchQuery);
+                if (currentFilter === 'active') return matchesSearch && !task.completed;
+                if (currentFilter === 'completed') return matchesSearch && task.completed;
+                return matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                listEl.innerHTML = `
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-8 text-center flex flex-col items-center justify-center gap-2 animate-fade-in transition-colors duration-300">
+                        <div class="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mb-1">
+                            <i class="fa-solid fa-clipboard-list text-xl"></i>
+                        </div>
+                        <h4 class="font-semibold text-slate-700 dark:text-slate-300">Задач не найдено</h4>
+                        <p class="text-xs text-slate-400 max-w-xs">Добавьте новую задачу или измените параметры поиска.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = filtered.map(task => `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 rounded-2xl shadow-xs flex items-center justify-between gap-4 transition-all hover:shadow-md animate-fade-in ${task.completed ? 'opacity-60 bg-slate-50/50 dark:bg-slate-900/40' : ''}">
+                    <div class="flex items-center space-x-3.5 min-w-0">
+                        <button onclick="toggleTask(${task.id})" class="w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 dark:border-slate-700 hover:border-indigo-500 bg-white dark:bg-slate-800'}">
+                            ${task.completed ? '<i class="fa-solid fa-check text-xs"></i>' : ''}
+                        </button>
+                        <div class="min-w-0">
+                            <h4 class="font-medium text-sm text-slate-800 dark:text-slate-100 truncate ${task.completed ? 'line-through text-slate-400 dark:text-slate-500' : ''}">${escapeHtml(task.title)}</h4>
+                            <div class="flex items-center space-x-2 mt-1">
+                                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">${task.category}</span>
+                                ${task.priority === 'high' ? '<span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400">Важно 🔥</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="deleteTask(${task.id})" title="Удалить задачу" class="text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 p-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors">
+                        <i class="fa-solid fa-trash-can text-sm"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        // Запуск при старте
+        initTheme();
+        updateStats();
+        renderTasks();
+    </script>
+</body>
+</html>
